@@ -1,4 +1,8 @@
-# bugfix-suggester-maven-plugin
+<img src="./docs/assets/logo.png" width="100px" align="left">
+
+### `bugfix-suggester-maven-plugin`
+
+<br><br>
 
 Maven plugin, that accepts files with bug summaries and provides suggestions how to fix them.
 
