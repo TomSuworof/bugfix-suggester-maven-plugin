@@ -41,6 +41,17 @@ public class SuggesterMojo extends AbstractMavenReport {
     private String modelName;
 
     /**
+     * Prompt for specified model.
+     * <br><br>
+     * Supports arguments placement:
+     * <ul>
+     *     <li><pre>%bugContent%</pre> will be replaced by actual bug description</li>
+     * </ul>
+     */
+    @Parameter(property = "prompt", readonly = true, required = true)
+    private String prompt;
+
+    /**
      * Request timeout to model in seconds. Default is 3 seconds.
      */
     @Parameter(property = "modelRequestTimeout", defaultValue = "3", readonly = true)
@@ -94,8 +105,7 @@ public class SuggesterMojo extends AbstractMavenReport {
             OllamaChatRequest request = OllamaChatRequestBuilder.getInstance(modelName)
                     .withMessage(
                             OllamaChatMessageRole.ASSISTANT,
-                            "SpotBugs after analysis gives this error. Suggest a fix. The error: \"" + bug.content() + "\". " +
-                                    "Keep the answer small and precise, code mostly."
+                            prompt.replace("%bugContent%", bug.content())
                     )
                     .build();
             OllamaChatResult result = ollamaAPI.chat(request);
