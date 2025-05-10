@@ -12,11 +12,10 @@ Suggestions are given by AI models from [ollama](https://github.com/ollama/ollam
 
 ## How to use
 
-1. Build plugin locally (yeah, I haven't deployed it yet).
-2. Add plugin to `pom.xml` reporting section after analyzer plugin (i.e. SpotBugs).
-3. Run Maven `site` goal: `mvn site`.
-4. Wait while AI doing its job...
-5. Find bugs and suggestions for them in `target/site/bugfix-suggestions.html`.
+1. Add plugin to `pom.xml` reporting section after analyzer plugin (i.e. SpotBugs).
+2. Run Maven `site` goal: `mvn site`.
+3. Wait while AI doing its job...
+4. Find bugs and suggestions for them in `target/site/bugfix-suggestions.html`.
 
 Example in `pom.xml`:
 ```xml
