@@ -9,11 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Check out Git repository
-      uses: actions/checkout@v2
-      with:
-        ref: master
-        fetch-depth: '0'
+    - uses: actions/checkout@v4
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4
@@ -25,6 +21,6 @@ jobs:
       run: mvn -B clean package
 
     - name: Publish to GitHub Packages Apache Maven
-      run: mvn deploy -s $GITHUB_WORKSPACE/settings.xml
+      run: mvn -B deploy
       env:
         GITHUB_TOKEN: ${{ github.token }}
