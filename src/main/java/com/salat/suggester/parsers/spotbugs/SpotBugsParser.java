@@ -27,7 +27,10 @@ public class SpotBugsParser implements Parser {
             assert bugCollection.getBugInstanceList() != null;
 
             for (BugInstance bugInstance : bugCollection.getBugInstanceList()) {
-                BugEntity bug = new BugEntity(bugInstance.getLongMessage().getTextContent());
+                BugEntity bug = new BugEntity(
+                        bugInstance.getLongMessage().getTextContent(),
+                        bugInstance.getAClass().getSourceLine().getSourcepath()
+                );
                 bugs.add(bug);
             }
             return bugs;

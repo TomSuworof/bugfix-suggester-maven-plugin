@@ -35,8 +35,8 @@ public class BugCollection {
     @XmlElements({@XmlElement(name = "BugInstance")})
     private List<BugInstance> bugInstanceList;
 
-    @XmlElement(name = "BugPattern")
-    private BugPattern bugPattern;
+    @XmlElements({@XmlElement(name = "BugPattern")})
+    private List<BugPattern> bugPatternList;
 
     @XmlElement(name = "ClassFeatures")
     private ClassFeatures classFeatures;

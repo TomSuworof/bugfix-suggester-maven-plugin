@@ -8,6 +8,7 @@ import io.github.ollama4j.models.chat.OllamaChatMessageRole;
 import io.github.ollama4j.models.chat.OllamaChatRequest;
 import io.github.ollama4j.models.chat.OllamaChatRequestBuilder;
 import io.github.ollama4j.models.chat.OllamaChatResult;
+import org.apache.commons.io.IOUtils;
 import org.apache.maven.doxia.sink.Sink;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -18,7 +19,7 @@ import org.commonmark.renderer.html.HtmlRenderer;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
@@ -52,10 +53,13 @@ public class SuggesterMojo extends AbstractMavenReport {
     private String prompt;
 
     /**
-     * Request timeout to model in seconds. Default is 3 seconds.
+     * Request timeout to model in seconds. Default is 600 seconds.
      */
-    @Parameter(property = "modelRequestTimeout", defaultValue = "3", readonly = true)
+    @Parameter(property = "modelRequestTimeout", defaultValue = "600", readonly = true)
     private long modelRequestTimeout;
+
+    @Parameter(defaultValue = "${project.build.sourceDirectory}", required = true, readonly = true)
+    private File sourceDirectory;
 
     @Override
     protected void executeReport(Locale locale) throws MavenReportException {
@@ -96,17 +100,22 @@ public class SuggesterMojo extends AbstractMavenReport {
         return new SpotBugsParser().parse(inputFileWithBugs);
     }
 
-    private List<SuggestionEntity> suggestFixesForBugs(Collection<BugEntity> bugs) throws OllamaBaseException, IOException, InterruptedException, URISyntaxException {
+    private List<SuggestionEntity> suggestFixesForBugs(Collection<BugEntity> bugs)
+            throws OllamaBaseException, IOException, InterruptedException {
         List<SuggestionEntity> suggestions = new LinkedList<>();
 
         OllamaAPI ollamaAPI = new OllamaAPI();
         ollamaAPI.setRequestTimeoutSeconds(modelRequestTimeout);
         for (BugEntity bug : bugs) {
+            String bugContent = bug.content();
+            String sourceFileContent = getSourceCode(bug.sourceFilePath());
+
+            String resultPrompt = prompt
+                    .replace("%bugContent%", bugContent)
+                    .replace("%sourceFile%", sourceFileContent);
+
             OllamaChatRequest request = OllamaChatRequestBuilder.getInstance(modelName)
-                    .withMessage(
-                            OllamaChatMessageRole.USER,
-                            prompt.replace("%bugContent%", bug.content())
-                    )
+                    .withMessage(OllamaChatMessageRole.USER, resultPrompt)
                     .build();
             OllamaChatResult result = ollamaAPI.chat(request);
             String responseText = objectMapper.reader().readTree(result.toString()).get("response").toString();
@@ -115,7 +124,13 @@ public class SuggesterMojo extends AbstractMavenReport {
         return suggestions;
     }
 
-    private void generateSiteWithBugsAndSuggestions(List<BugEntity> bugs, List<SuggestionEntity> suggestions) throws MavenReportException {
+    private String getSourceCode(String sourceFilePath) throws IOException {
+        File sourceFile = sourceDirectory.toPath().resolve(sourceFilePath).toFile();
+        return IOUtils.toString(sourceFile.toURI(), StandardCharsets.UTF_8);
+    }
+
+    private void generateSiteWithBugsAndSuggestions(List<BugEntity> bugs, List<SuggestionEntity> suggestions)
+            throws MavenReportException {
         getLog().info("Bug list size: " + bugs.size());
         getLog().info("Suggestion list size: " + suggestions.size());
 

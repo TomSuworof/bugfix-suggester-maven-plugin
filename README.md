@@ -28,7 +28,7 @@ Example in `pom.xml`:
             <configuration>
                 <inputFileWithBugs>${build.directory}/spotbugsXml.xml</inputFileWithBugs>
                 <modelName>qwen2.5</modelName>
-                <prompt>SpotBugs after analysis gives this error. Suggest a fix. The error: %bugContent%. Keep the answer small and precise, code mostly.</prompt>
+                <prompt>SpotBugs after analysis gives this error. Suggest a fix. The error: %bugContent%. Source code: ```%sourceFile%```. Keep the answer small and precise, code mostly.</prompt>
             </configuration>
         </plugin>
     </plugins>
