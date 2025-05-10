@@ -24,7 +24,7 @@ Example in `pom.xml`:
         <plugin>
             <groupId>com.salat.bugfix-suggester</groupId>
             <artifactId>bugfix-suggester-maven-plugin</artifactId>
-            <version>0.0.1</version>
+            <version>0.0.2</version>
             <configuration>
                 <inputFileWithBugs>${build.directory}/spotbugsXml.xml</inputFileWithBugs>
                 <modelName>qwen2.5</modelName>
