@@ -104,7 +104,7 @@ public class SuggesterMojo extends AbstractMavenReport {
         for (BugEntity bug : bugs) {
             OllamaChatRequest request = OllamaChatRequestBuilder.getInstance(modelName)
                     .withMessage(
-                            OllamaChatMessageRole.ASSISTANT,
+                            OllamaChatMessageRole.USER,
                             prompt.replace("%bugContent%", bug.content())
                     )
                     .build();
