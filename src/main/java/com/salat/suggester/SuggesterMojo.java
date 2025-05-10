@@ -1,6 +1,5 @@
 package com.salat.suggester;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.salat.suggester.parsers.spotbugs.SpotBugsParser;
 import io.github.ollama4j.OllamaAPI;
 import io.github.ollama4j.exceptions.OllamaBaseException;
@@ -27,8 +26,6 @@ import java.util.Locale;
 
 @Mojo(name = "suggest")
 public class SuggesterMojo extends AbstractMavenReport {
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-
     /**
      * Location of file, that contains bugs messages from code analysers, for example, spotbugsXml.xml.
      */
@@ -118,7 +115,7 @@ public class SuggesterMojo extends AbstractMavenReport {
                     .withMessage(OllamaChatMessageRole.USER, resultPrompt)
                     .build();
             OllamaChatResult result = ollamaAPI.chat(request);
-            String responseText = objectMapper.reader().readTree(result.toString()).get("response").toString();
+            String responseText = result.getResponseModel().getMessage().getContent();
             suggestions.add(new SuggestionEntity(responseText));
         }
         return suggestions;
@@ -173,13 +170,12 @@ public class SuggesterMojo extends AbstractMavenReport {
                     mainSink.sectionTitle1_();
                 }
                 {
-                    mainSink.paragraph();
+                    mainSink.blockquote();
                     mainSink.text(bug.content());
-                    mainSink.paragraph_();
+                    mainSink.blockquote_();
                 }
                 {
-                    String suggestionContent = suggestion.content()
-                            .replace("\\n", "\n");
+                    String suggestionContent = suggestion.content();
 
                     mainSink.paragraph();
                     mainSink.rawText(renderer.render(parser.parse(suggestionContent)));
