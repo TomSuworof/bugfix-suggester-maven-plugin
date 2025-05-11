@@ -3,6 +3,7 @@ package com.salat.suggester;
 import com.salat.suggester.parsers.spotbugs.SpotBugsParser;
 import io.github.ollama4j.OllamaAPI;
 import io.github.ollama4j.exceptions.OllamaBaseException;
+import io.github.ollama4j.exceptions.ToolInvocationException;
 import io.github.ollama4j.models.chat.OllamaChatMessageRole;
 import io.github.ollama4j.models.chat.OllamaChatRequest;
 import io.github.ollama4j.models.chat.OllamaChatRequestBuilder;
@@ -116,7 +117,7 @@ public class SuggesterMojo extends AbstractMavenReport {
     }
 
     private List<SuggestionEntity> suggestFixesForBugs(Collection<BugEntity> bugs)
-            throws OllamaBaseException, IOException, InterruptedException {
+            throws IOException, ToolInvocationException, OllamaBaseException, InterruptedException {
         List<SuggestionEntity> suggestions = new LinkedList<>();
 
         OllamaAPI ollamaAPI = getOllamaAPIClient();
