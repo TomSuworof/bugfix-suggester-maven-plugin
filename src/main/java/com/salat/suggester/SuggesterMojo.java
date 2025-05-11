@@ -141,7 +141,7 @@ public class SuggesterMojo extends AbstractMavenReport {
 
     private OllamaAPI getOllamaAPIClient() {
         OllamaAPI ollamaAPI = new OllamaAPI(ollamaHost);
-        if (!ollamaUsername.isBlank() && !ollamaPassword.isBlank()) {
+        if (ollamaUsername != null && !ollamaUsername.isBlank() && ollamaPassword != null && !ollamaPassword.isBlank()) {
             ollamaAPI.setBasicAuth(ollamaUsername, ollamaPassword);
         }
         ollamaAPI.setRequestTimeoutSeconds(modelRequestTimeout);
