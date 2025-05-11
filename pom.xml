@@ -105,21 +105,44 @@
                     <goalPrefix>bugfix-suggester</goalPrefix>
                     <skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>
                 </configuration>
-                <executions>
-                    <execution>
-                        <id>mojo-descriptor</id>
-                        <goals>
-                            <goal>descriptor</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>help-goal</id>
-                        <goals>
-                            <goal>helpmojo</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>
+
+    <reporting>
+        <plugins>
+            <!-- mvn com.github.spotbugs:spotbugs-maven-plugin:gui to show GUI -->
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>4.8.5.0</version>
+                <configuration>
+                    <effort>Max</effort>
+                    <threshold>low</threshold>
+                    <failOnError>true</failOnError>
+                    <includeFilterFile>${project.basedir}/spotbugs-include.xml</includeFilterFile>
+                    <excludeFilterFile>${project.basedir}/spotbugs-exclude.xml</excludeFilterFile>
+                    <plugins>
+                        <plugin>
+                            <groupId>com.h3xstream.findsecbugs</groupId>
+                            <artifactId>findsecbugs-plugin</artifactId>
+                            <version>1.13.0</version>
+                        </plugin>
+                    </plugins>
+                </configuration>
+            </plugin>
+            <!-- mvn com.salat:bugfix-suggester-maven-plugin:suggest -->
+            <plugin>
+                <groupId>com.salat.bugfix-suggester</groupId>
+                <artifactId>bugfix-suggester-maven-plugin</artifactId>
+                <version>${project.version}</version>
+                <configuration>
+                    <inputFileWithBugs>${build.directory}/spotbugsXml.xml</inputFileWithBugs>
+                    <modelName>codegemma:latest</modelName>
+                    <modelRequestTimeout>600</modelRequestTimeout>
+                    <prompt>SpotBugs after analysis gives this error. Suggest a fix. The error: %bugContent%. Source code: ```%sourceFile%```. Keep the answer small and precise, code mostly.</prompt>
+                </configuration>
+            </plugin>
+        </plugins>
+    </reporting>
 </project>
