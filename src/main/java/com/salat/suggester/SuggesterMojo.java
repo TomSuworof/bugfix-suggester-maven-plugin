@@ -33,9 +33,33 @@ public class SuggesterMojo extends AbstractMavenReport {
     private File inputFileWithBugs;
 
     /**
+     * Address of Ollama server
+     */
+    @Parameter(property = "ollamaHost", defaultValue = "http://localhost:11434")
+    private String ollamaHost;
+
+    /**
+     * Username to log in to Ollama server
+     */
+    @Parameter(property = "ollamaUsername")
+    private String ollamaUsername;
+
+    /**
+     * Password to log in to Ollama server
+     */
+    @Parameter(property = "ollamaPassword")
+    private String ollamaPassword;
+
+    /**
+     * Request timeout to model in seconds. Default is 600 seconds.
+     */
+    @Parameter(property = "modelRequestTimeout", defaultValue = "600")
+    private long modelRequestTimeout;
+
+    /**
      * Model from Ollama to use for generation suggestions.
      */
-    @Parameter(property = "modelName", readonly = true)
+    @Parameter(property = "modelName", required = true)
     private String modelName;
 
     /**
@@ -46,16 +70,10 @@ public class SuggesterMojo extends AbstractMavenReport {
      *     <li><pre>%bugContent%</pre> will be replaced by actual bug description</li>
      * </ul>
      */
-    @Parameter(property = "prompt", readonly = true, required = true)
+    @Parameter(property = "prompt", required = true)
     private String prompt;
 
-    /**
-     * Request timeout to model in seconds. Default is 600 seconds.
-     */
-    @Parameter(property = "modelRequestTimeout", defaultValue = "600", readonly = true)
-    private long modelRequestTimeout;
-
-    @Parameter(defaultValue = "${project.build.sourceDirectory}", required = true, readonly = true)
+    @Parameter(defaultValue = "${project.build.sourceDirectory}", required = true)
     private File sourceDirectory;
 
     @Override
@@ -101,8 +119,7 @@ public class SuggesterMojo extends AbstractMavenReport {
             throws OllamaBaseException, IOException, InterruptedException {
         List<SuggestionEntity> suggestions = new LinkedList<>();
 
-        OllamaAPI ollamaAPI = new OllamaAPI();
-        ollamaAPI.setRequestTimeoutSeconds(modelRequestTimeout);
+        OllamaAPI ollamaAPI = getOllamaAPIClient();
         for (BugEntity bug : bugs) {
             String bugContent = bug.content();
             String sourceFileContent = getSourceCode(bug.sourceFilePath());
@@ -119,6 +136,15 @@ public class SuggesterMojo extends AbstractMavenReport {
             suggestions.add(new SuggestionEntity(responseText));
         }
         return suggestions;
+    }
+
+    private OllamaAPI getOllamaAPIClient() {
+        OllamaAPI ollamaAPI = new OllamaAPI(ollamaHost);
+        if (!ollamaUsername.isBlank() && !ollamaPassword.isBlank()) {
+            ollamaAPI.setBasicAuth(ollamaUsername, ollamaPassword);
+        }
+        ollamaAPI.setRequestTimeoutSeconds(modelRequestTimeout);
+        return new OllamaAPI();
     }
 
     private String getSourceCode(String sourceFilePath) throws IOException {
