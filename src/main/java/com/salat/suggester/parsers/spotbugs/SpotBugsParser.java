@@ -28,6 +28,7 @@ public class SpotBugsParser implements Parser {
 
             for (BugInstance bugInstance : bugCollection.getBugInstanceList()) {
                 BugEntity bug = new BugEntity(
+                        bugInstance.getAClass().getSourceLine().getClassname(),
                         bugInstance.getLongMessage().getTextContent(),
                         bugInstance.getAClass().getSourceLine().getSourcepath()
                 );

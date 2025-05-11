@@ -20,10 +20,7 @@ import org.commonmark.renderer.html.HtmlRenderer;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 
 @Mojo(name = "suggest")
 public class SuggesterMojo extends AbstractMavenReport {
@@ -91,21 +88,21 @@ public class SuggesterMojo extends AbstractMavenReport {
                 s -> getLog().info("Bug: " + s)
         );
 
-        List<SuggestionEntity> suggestions;
+        Map<BugEntity, SuggestionEntity> bugfixes;
         {
             try {
-                suggestions = suggestFixesForBugs(bugs);
+                bugfixes = suggestBugfixes(bugs);
             } catch (Exception e) {
                 throw new MavenReportException("Error making API call to ollama", e);
             }
         }
-        suggestions.stream().map(SuggestionEntity::content).forEach(
+        bugfixes.values().stream().map(SuggestionEntity::content).forEach(
                 s -> getLog().info("Suggestion: " + s)
         );
 
         {
             try {
-                generateSiteWithBugsAndSuggestions(bugs, suggestions);
+                generateSiteWithBugfixes(bugfixes);
             } catch (Exception e) {
                 throw new MavenReportException("Error creating HTML report", e);
             }
@@ -116,36 +113,48 @@ public class SuggesterMojo extends AbstractMavenReport {
         return new SpotBugsParser().parse(inputFileWithBugs);
     }
 
-    private List<SuggestionEntity> suggestFixesForBugs(Collection<BugEntity> bugs)
-            throws IOException, ToolInvocationException, OllamaBaseException, InterruptedException {
-        List<SuggestionEntity> suggestions = new LinkedList<>();
-
+    private Map<BugEntity, SuggestionEntity> suggestBugfixes(Collection<BugEntity> bugs) {
+        Map<BugEntity, SuggestionEntity> bugfixes = new LinkedHashMap<>();
         OllamaAPI ollamaAPI = getOllamaAPIClient();
         for (BugEntity bug : bugs) {
-            String bugContent = bug.content();
-            String sourceFileContent = getSourceCode(bug.sourceFilePath());
-
-            String resultPrompt = prompt
-                    .replace("%bugContent%", bugContent)
-                    .replace("%sourceFile%", sourceFileContent);
-
-            OllamaChatRequest request = OllamaChatRequestBuilder.getInstance(modelName)
-                    .withMessage(OllamaChatMessageRole.USER, resultPrompt)
-                    .build();
-            OllamaChatResult result = ollamaAPI.chat(request);
-            String responseText = result.getResponseModel().getMessage().getContent();
-            suggestions.add(new SuggestionEntity(responseText));
+            try {
+                SuggestionEntity suggestion = suggestBugfix(ollamaAPI, bug);
+                bugfixes.put(bug, suggestion);
+            } catch (IOException | OllamaBaseException | InterruptedException | ToolInvocationException e) {
+                getLog().error("Failed to suggest bugfix", e);
+            }
         }
-        return suggestions;
+        return bugfixes;
     }
 
     private OllamaAPI getOllamaAPIClient() {
         OllamaAPI ollamaAPI = new OllamaAPI(ollamaHost);
-        if (ollamaUsername != null && !ollamaUsername.isBlank() && ollamaPassword != null && !ollamaPassword.isBlank()) {
+        if (ollamaUsername != null && !ollamaUsername.isBlank() &&
+                ollamaPassword != null && !ollamaPassword.isBlank()) {
             ollamaAPI.setBasicAuth(ollamaUsername, ollamaPassword);
         }
         ollamaAPI.setRequestTimeoutSeconds(modelRequestTimeout);
         return new OllamaAPI();
+    }
+
+    private SuggestionEntity suggestBugfix(OllamaAPI ollamaAPI, BugEntity bug)
+            throws IOException, ToolInvocationException, OllamaBaseException, InterruptedException {
+        String resultPrompt = replaceParametersInPrompt(prompt, bug);
+        OllamaChatRequest request = OllamaChatRequestBuilder.getInstance(modelName)
+                .withMessage(OllamaChatMessageRole.USER, resultPrompt)
+                .build();
+        OllamaChatResult result = ollamaAPI.chat(request);
+        String responseText = result.getResponseModel().getMessage().getContent();
+        return new SuggestionEntity(responseText);
+    }
+
+    private String replaceParametersInPrompt(String templatedPrompt, BugEntity bug) throws IOException {
+        String bugContent = bug.content();
+        String sourceFileContent = getSourceCode(bug.sourceFilePath());
+
+        return templatedPrompt
+                .replace("%bugContent%", bugContent)
+                .replace("%sourceFile%", sourceFileContent);
     }
 
     private String getSourceCode(String sourceFilePath) throws IOException {
@@ -153,18 +162,9 @@ public class SuggesterMojo extends AbstractMavenReport {
         return IOUtils.toString(sourceFile.toURI(), StandardCharsets.UTF_8);
     }
 
-    private void generateSiteWithBugsAndSuggestions(List<BugEntity> bugs, List<SuggestionEntity> suggestions)
+    private void generateSiteWithBugfixes(Map<BugEntity, SuggestionEntity> bugfixes)
             throws MavenReportException {
-        getLog().info("Bug list size: " + bugs.size());
-        getLog().info("Suggestion list size: " + suggestions.size());
-
-        if (bugs.size() != suggestions.size()) {
-            throw new IllegalStateException(String.format(
-                    "Bugs list size is not equal to suggestion list size. Bugs: %d, Suggestions: %d",
-                    bugs.size(),
-                    suggestions.size()
-            ));
-        }
+        getLog().info("Suggestions size: " + bugfixes.size());
 
         Parser parser = Parser.builder().build();
         HtmlRenderer renderer = HtmlRenderer.builder().build();
@@ -182,9 +182,9 @@ public class SuggesterMojo extends AbstractMavenReport {
 
         mainSink.body();
 
-        for (int i = 0; i < bugs.size(); i++) {
-            BugEntity bug = bugs.get(i);
-            SuggestionEntity suggestion = suggestions.get(i);
+        for (Map.Entry<BugEntity, SuggestionEntity> bugfix : bugfixes.entrySet()) {
+            BugEntity bug = bugfix.getKey();
+            SuggestionEntity suggestion = bugfix.getValue();
 
             getLog().info("Bug: " + bug.content());
             getLog().info("Suggestion: " + suggestion.content());
@@ -193,7 +193,7 @@ public class SuggesterMojo extends AbstractMavenReport {
                 mainSink.section1();
                 {
                     mainSink.sectionTitle1();
-                    mainSink.text("Bug #" + (i + 1));
+                    mainSink.text(bug.title());
                     mainSink.sectionTitle1_();
                 }
                 {
