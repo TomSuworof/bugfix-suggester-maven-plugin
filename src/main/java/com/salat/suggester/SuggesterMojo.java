@@ -86,6 +86,12 @@ public class SuggesterMojo extends AbstractMavenReport {
     @Parameter(defaultValue = "${project.build.sourceDirectory}", required = true)
     private File sourceDirectory;
 
+    /**
+     * Dummy suggestion for testing purposes.
+     */
+    @Parameter(property = "dummySuggestion")
+    private String dummySuggestion;
+
     private Map<BugEntity, SuggestionEntity> bugfixes = new HashMap<>();
 
     @Override
@@ -163,6 +169,7 @@ public class SuggesterMojo extends AbstractMavenReport {
 
     private SuggestionEntity suggestBugfix(OllamaAPI ollamaAPI, BugEntity bug)
             throws IOException, ToolInvocationException, OllamaBaseException, InterruptedException {
+        if (dummySuggestion != null) return new SuggestionEntity(dummySuggestion);
         String resultPrompt = replaceParametersInPrompt(prompt, bug);
         OllamaChatRequest request = OllamaChatRequestBuilder.getInstance(modelName)
                 .withMessage(OllamaChatMessageRole.USER, resultPrompt)
