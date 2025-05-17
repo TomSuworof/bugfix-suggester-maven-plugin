@@ -169,7 +169,7 @@ public class SuggesterMojo extends AbstractMavenReport {
                 .build();
         OllamaChatResult result = ollamaAPI.chat(request);
         String responseText = result.getResponseModel().getMessage().getContent();
-        return new SuggestionEntity("responseText");
+        return new SuggestionEntity(responseText);
     }
 
     private String replaceParametersInPrompt(String templatedPrompt, BugEntity bug) throws IOException {
