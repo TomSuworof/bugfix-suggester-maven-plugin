@@ -29,12 +29,12 @@
         <dependency>
             <groupId>org.apache.maven.reporting</groupId>
             <artifactId>maven-reporting-impl</artifactId>
-            <version>3.2.0</version>
+            <version>4.0.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.maven.reporting</groupId>
             <artifactId>maven-reporting-api</artifactId>
-            <version>3.1.1</version>
+            <version>4.0.0</version>
         </dependency>
 
         <!-- plugin API and plugin-tools -->
@@ -140,7 +140,9 @@
                     <inputFileWithBugs>${build.directory}/spotbugsXml.xml</inputFileWithBugs>
                     <modelName>codegemma:latest</modelName>
                     <modelRequestTimeout>600</modelRequestTimeout>
-                    <prompt>SpotBugs after analysis gives this error. Suggest a fix. The error: %bugContent%. Source code: ```%sourceFile%```. Keep the answer small and precise, code mostly.</prompt>
+                    <prompt>SpotBugs after analysis gives this error. Suggest a fix. The error: %bugContent%. Source
+                        code: ```%sourceFile%```. Keep the answer small and precise, code mostly.
+                    </prompt>
                 </configuration>
             </plugin>
         </plugins>

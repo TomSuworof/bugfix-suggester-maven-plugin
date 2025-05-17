@@ -9,14 +9,14 @@ import io.github.ollama4j.models.chat.OllamaChatRequest;
 import io.github.ollama4j.models.chat.OllamaChatRequestBuilder;
 import io.github.ollama4j.models.chat.OllamaChatResult;
 import org.apache.commons.io.IOUtils;
-import org.apache.maven.doxia.sink.Sink;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.reporting.AbstractMavenReport;
 import org.apache.maven.reporting.MavenReportException;
-import org.commonmark.parser.Parser;
-import org.commonmark.renderer.html.HtmlRenderer;
 
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -71,11 +71,25 @@ public class SuggesterMojo extends AbstractMavenReport {
     @Parameter(property = "prompt", required = true)
     private String prompt;
 
+    @Parameter(defaultValue = "${project.build.directory}", required = true)
+    private File sourceProjectBuildDirectory;
+
+    @Parameter(property = "suggestionsOutputFilename", defaultValue = "bugfix-suggestions.xml")
+    private String suggestionsOutputFilename;
+
+    @Parameter(defaultValue = "${project.name}", required = true)
+    private String sourceProjectName;
+
+    @Parameter(defaultValue = "${project.version}", required = true)
+    private String sourceProjectVersion;
+
     @Parameter(defaultValue = "${project.build.sourceDirectory}", required = true)
     private File sourceDirectory;
 
+    private Map<BugEntity, SuggestionEntity> bugfixes = new HashMap<>();
+
     @Override
-    protected void executeReport(Locale locale) throws MavenReportException {
+    public boolean canGenerateReport() throws MavenReportException {
         List<BugEntity> bugs;
         {
             try {
@@ -84,11 +98,10 @@ public class SuggesterMojo extends AbstractMavenReport {
                 throw new MavenReportException("Error parsing bugs from file", e);
             }
         }
-        bugs.stream().map(BugEntity::content).forEach(
+        bugs.stream().map(BugEntity::getContent).forEach(
                 s -> getLog().info("Bug: " + s)
         );
 
-        Map<BugEntity, SuggestionEntity> bugfixes;
         {
             try {
                 bugfixes = suggestBugfixes(bugs);
@@ -96,17 +109,24 @@ public class SuggesterMojo extends AbstractMavenReport {
                 throw new MavenReportException("Error making API call to ollama", e);
             }
         }
-        bugfixes.values().stream().map(SuggestionEntity::content).forEach(
-                s -> getLog().info("Suggestion: " + s)
-        );
+
+        for (Map.Entry<BugEntity, SuggestionEntity> bugfix : bugfixes.entrySet()) {
+            BugEntity bug = bugfix.getKey();
+            SuggestionEntity suggestion = bugfix.getValue();
+            getLog().info("Bug: " + bug.getContent());
+            getLog().info("Suggestion: " + suggestion.getContent());
+        }
 
         {
             try {
-                generateSiteWithBugfixes(bugfixes);
+                dumpBugfixesToOutputFile();
             } catch (Exception e) {
-                throw new MavenReportException("Error creating HTML report", e);
+                getLog().error(e.toString());
+                throw new MavenReportException("Failed to dump bugfix suggestions to file", e);
             }
         }
+
+        return !bugfixes.isEmpty();
     }
 
     private List<BugEntity> parseFileAndCollectBugs() {
@@ -149,8 +169,8 @@ public class SuggesterMojo extends AbstractMavenReport {
     }
 
     private String replaceParametersInPrompt(String templatedPrompt, BugEntity bug) throws IOException {
-        String bugContent = bug.content();
-        String sourceFileContent = getSourceCode(bug.sourceFilePath());
+        String bugContent = bug.getContent();
+        String sourceFileContent = getSourceCode(bug.getSourceFilePath());
 
         return templatedPrompt
                 .replace("%bugContent%", bugContent)
@@ -162,57 +182,33 @@ public class SuggesterMojo extends AbstractMavenReport {
         return IOUtils.toString(sourceFile.toURI(), StandardCharsets.UTF_8);
     }
 
+    private void dumpBugfixesToOutputFile() throws JAXBException {
+        File outputFile = new File(sourceProjectBuildDirectory, suggestionsOutputFilename);
+        JAXBContext context = JAXBContext.newInstance(BugFixesDump.class);
+        Marshaller marshaller = context.createMarshaller();
+        marshaller.marshal(new BugFixesDump(bugfixes), outputFile);
+    }
+
+    @Override
+    protected void executeReport(Locale locale) throws MavenReportException {
+        try {
+            generateSiteWithBugfixes(bugfixes);
+        } catch (Exception e) {
+            throw new MavenReportException("Error creating HTML report", e);
+        }
+    }
+
     private void generateSiteWithBugfixes(Map<BugEntity, SuggestionEntity> bugfixes)
             throws MavenReportException {
         getLog().info("Suggestions size: " + bugfixes.size());
 
-        Parser parser = Parser.builder().build();
-        HtmlRenderer renderer = HtmlRenderer.builder().build();
-
-        Sink mainSink = getSink();
-        if (mainSink == null) {
-            throw new MavenReportException("Could not get the Doxia sink");
-        }
-
-        mainSink.head();
-        mainSink.title();
-        mainSink.text("Bugfix suggestions report for " + project.getName() + " " + project.getVersion());
-        mainSink.title_();
-        mainSink.head_();
-
-        mainSink.body();
-
-        for (Map.Entry<BugEntity, SuggestionEntity> bugfix : bugfixes.entrySet()) {
-            BugEntity bug = bugfix.getKey();
-            SuggestionEntity suggestion = bugfix.getValue();
-
-            getLog().info("Bug: " + bug.content());
-            getLog().info("Suggestion: " + suggestion.content());
-
-            {
-                mainSink.section1();
-                {
-                    mainSink.sectionTitle1();
-                    mainSink.text(bug.title());
-                    mainSink.sectionTitle1_();
-                }
-                {
-                    mainSink.blockquote();
-                    mainSink.text(bug.content());
-                    mainSink.blockquote_();
-                }
-                {
-                    String suggestionContent = suggestion.content();
-
-                    mainSink.paragraph();
-                    mainSink.rawText(renderer.render(parser.parse(suggestionContent)));
-                    mainSink.paragraph_();
-                }
-                mainSink.section1_();
-            }
-        }
-
-        mainSink.body_();
+        BugfixSuggesterReportGenerator reportGenerator = new BugfixSuggesterReportGenerator(
+                getSink(),
+                sourceProjectName,
+                sourceProjectVersion,
+                bugfixes
+        );
+        reportGenerator.generateReport();
     }
 
     @Override
