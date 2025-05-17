@@ -15,28 +15,24 @@ import java.util.List;
 
 public class SpotBugsParser implements Parser {
     @Override
-    public List<BugEntity> parse(File bugsReportFile) {
-        try {
-            JAXBContext context = JAXBContext.newInstance(BugCollection.class);
-            Unmarshaller unmarshaller = context.createUnmarshaller();
-            JAXBElement<BugCollection> root = unmarshaller.unmarshal(new StreamSource(bugsReportFile), BugCollection.class);
-            BugCollection bugCollection = root.getValue();
+    public List<BugEntity> parse(File bugsReportFile) throws Exception {
+        JAXBContext context = JAXBContext.newInstance(BugCollection.class);
+        Unmarshaller unmarshaller = context.createUnmarshaller();
+        JAXBElement<BugCollection> root = unmarshaller.unmarshal(new StreamSource(bugsReportFile), BugCollection.class);
+        BugCollection bugCollection = root.getValue();
 
-            List<BugEntity> bugs = new LinkedList<>();
+        List<BugEntity> bugs = new LinkedList<>();
 
-            assert bugCollection.getBugInstanceList() != null;
+        assert bugCollection.getBugInstanceList() != null;
 
-            for (BugInstance bugInstance : bugCollection.getBugInstanceList()) {
-                BugEntity bug = new BugEntity(
-                        bugInstance.getAClass().getSourceLine().getClassname(),
-                        bugInstance.getLongMessage().getTextContent(),
-                        bugInstance.getAClass().getSourceLine().getSourcepath()
-                );
-                bugs.add(bug);
-            }
-            return bugs;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to parse SpotBugs report", e);
+        for (BugInstance bugInstance : bugCollection.getBugInstanceList()) {
+            BugEntity bug = new BugEntity(
+                    bugInstance.getAClass().getSourceLine().getClassname(),
+                    bugInstance.getLongMessage().getTextContent(),
+                    bugInstance.getAClass().getSourceLine().getSourcepath()
+            );
+            bugs.add(bug);
         }
+        return bugs;
     }
 }
