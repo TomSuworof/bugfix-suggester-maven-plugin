@@ -164,7 +164,7 @@ public class SuggesterMojo extends AbstractMavenReport {
             ollamaAPI.setBasicAuth(ollamaUsername, ollamaPassword);
         }
         ollamaAPI.setRequestTimeoutSeconds(modelRequestTimeout);
-        return new OllamaAPI();
+        return ollamaAPI;
     }
 
     private SuggestionEntity suggestBugfix(OllamaAPI ollamaAPI, BugEntity bug)
