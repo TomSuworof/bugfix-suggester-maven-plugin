@@ -27,7 +27,7 @@ public class SuggesterMojo extends AbstractMavenReport {
     /**
      * Location of file, that contains bugs messages from code analysers, for example, spotbugsXml.xml.
      */
-    @Parameter(property = "inputFileWithBugs", required = true)
+    @Parameter(property = "inputFileWithBugs", defaultValue = "${project.build.directory}/spotbugsXml.xml")
     private File inputFileWithBugs;
 
     /**
@@ -129,8 +129,12 @@ public class SuggesterMojo extends AbstractMavenReport {
         return !bugfixes.isEmpty();
     }
 
-    private List<BugEntity> parseFileAndCollectBugs() {
-        return new SpotBugsParser().parse(inputFileWithBugs);
+    private List<BugEntity> parseFileAndCollectBugs() throws Exception {
+        if (inputFileWithBugs.exists()) {
+            return new SpotBugsParser().parse(inputFileWithBugs);
+        } else {
+            return Collections.emptyList();
+        }
     }
 
     private Map<BugEntity, SuggestionEntity> suggestBugfixes(Collection<BugEntity> bugs) {
@@ -165,7 +169,7 @@ public class SuggesterMojo extends AbstractMavenReport {
                 .build();
         OllamaChatResult result = ollamaAPI.chat(request);
         String responseText = result.getResponseModel().getMessage().getContent();
-        return new SuggestionEntity(responseText);
+        return new SuggestionEntity("responseText");
     }
 
     private String replaceParametersInPrompt(String templatedPrompt, BugEntity bug) throws IOException {
@@ -184,6 +188,7 @@ public class SuggesterMojo extends AbstractMavenReport {
 
     private void dumpBugfixesToOutputFile() throws JAXBException {
         File outputFile = new File(sourceProjectBuildDirectory, suggestionsOutputFilename);
+        getLog().info("Dumping " + bugfixes.size() + " bugfix suggestions to file " + outputFile);
         JAXBContext context = JAXBContext.newInstance(BugFixesDump.class);
         Marshaller marshaller = context.createMarshaller();
         marshaller.marshal(new BugFixesDump(bugfixes), outputFile);

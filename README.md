@@ -26,7 +26,6 @@ Example in `pom.xml`:
             <artifactId>bugfix-suggester-maven-plugin</artifactId>
             <version>0.0.2</version>
             <configuration>
-                <inputFileWithBugs>${build.directory}/spotbugsXml.xml</inputFileWithBugs>
                 <modelName>qwen2.5</modelName>
                 <prompt>SpotBugs after analysis gives this error. Suggest a fix. The error: %bugContent%. Source code: ```%sourceFile%```. Keep the answer small and precise, code mostly.</prompt>
             </configuration>

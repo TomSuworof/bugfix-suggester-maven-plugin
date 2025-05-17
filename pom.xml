@@ -137,7 +137,6 @@
                 <artifactId>bugfix-suggester-maven-plugin</artifactId>
                 <version>${project.version}</version>
                 <configuration>
-                    <inputFileWithBugs>${build.directory}/spotbugsXml.xml</inputFileWithBugs>
                     <modelName>codegemma:latest</modelName>
                     <modelRequestTimeout>600</modelRequestTimeout>
                     <prompt>SpotBugs after analysis gives this error. Suggest a fix. The error: %bugContent%. Source
